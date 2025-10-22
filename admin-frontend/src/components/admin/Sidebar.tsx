@@ -3,7 +3,11 @@ import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/admin/dashboards", label: "Dashboards", icon: HomeIcon },
+  { href: "/admin/users",      label: "Users",      icon: HomeIcon },
+  { href: "/admin/roles",      label: "Roles",      icon: HomeIcon },
+  { href: "/admin/permissions",label: "Permissions",icon: HomeIcon },
 ];
+
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();

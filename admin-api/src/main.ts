@@ -5,7 +5,7 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // ВАЖНО: разрешаем фронт http://localhost:3001
+  // Разрешаем фронту на :3001 ходить на бэк :3000
   app.enableCors({
     origin: ['http://localhost:3001'],
     credentials: true,
@@ -13,12 +13,15 @@ async function bootstrap() {
     allowedHeaders: 'Content-Type, Authorization',
   });
 
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
 
+  // Глобальный префикс API
   app.setGlobalPrefix('api/admin');
 
   const port = Number(process.env.PORT) || 3000;

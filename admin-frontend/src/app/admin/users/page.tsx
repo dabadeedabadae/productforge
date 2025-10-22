@@ -1,80 +1,79 @@
+// src/app/admin/users/page.tsx
 "use client";
+
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Button } from "@/components/Button";
-import { Input } from "@/components/Input";
-import { Card } from "@/components/Card";
+import { useRouter } from "next/navigation";
 
-type User = { id:number; email:string; name:string; roleId:number; isActive:boolean; createdAt:string };
+type User = { id: number; email: string; name: string; isActive: boolean };
 
 export default function UsersPage() {
-    const [items, setItems] = useState<User[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [err, setErr] = useState<string>();
-    const [form, setForm] = useState({ email:"", password:"", name:"" });
+  const [data, setData] = useState<User[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [errText, setErrText] = useState<string | null>(null);
+  const router = useRouter();
 
-    const load = async () => {
-        setLoading(true); setErr(undefined);
-        try {
-            const { data } = await api.get<User[]>("/users");
-            setItems(data);
-        } catch (e:any) { setErr(e?.response?.data?.message || "Failed to load users"); }
-        finally { setLoading(false); }
-    };
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setErrText(null);
+        const res = await api.get<User[]>("/users");
+        if (!mounted) return;
+        setData(res.data);
+      } catch (e: any) {
+        const s = e?.response?.status;
+        if (s === 401) {
+          // редирект только на 401 (неавторизован)
+          router.replace("/login?next=/admin/users");
+          return;
+        }
+        if (s === 403) {
+          setErrText("Нет прав для просмотра пользователей (403). Попроси роль/разрешение.");
+          return;
+        }
+        setErrText("Не удалось загрузить пользователей. Проверь консоль/Network.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [router]);
 
-    useEffect(() => { load(); }, []);
+  if (loading) {
+    return <div className="rounded-xl bg-white shadow-sm ring-1 ring-black/5 p-6">Loading...</div>;
+  }
 
-    const create = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            await api.post("/users", form);
-            setForm({ email:"", password:"", name:"" });
-            await load();
-        } catch (e:any) { setErr(e?.response?.data?.message || "Create failed"); }
-    };
-
+  if (errText) {
     return (
-        <div className="space-y-6">
-            <h1 className="text-2xl font-semibold">Users</h1>
-
-            <Card className="p-4">
-                <form onSubmit={create} className="flex gap-2 flex-wrap">
-                    <Input placeholder="Email" value={form.email} onChange={e=>setForm(s=>({...s,email:e.target.value}))} />
-                    <Input placeholder="Password" type="password" value={form.password} onChange={e=>setForm(s=>({...s,password:e.target.value}))} />
-                    <Input placeholder="Name" value={form.name} onChange={e=>setForm(s=>({...s,name:e.target.value}))} />
-                    <Button>Create</Button>
-                </form>
-            </Card>
-
-            {err && <p className="text-sm text-red-600">{err}</p>}
-            {loading ? <p>Loading…</p> : (
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm border">
-                        <thead className="bg-gray-50">
-                        <tr>
-                            <th className="p-2 text-left">ID</th>
-                            <th className="p-2 text-left">Email</th>
-                            <th className="p-2 text-left">Name</th>
-                            <th className="p-2 text-left">RoleId</th>
-                            <th className="p-2 text-left">Active</th>
-                            <th className="p-2 text-left">Created</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {items.map(u=>(
-                            <tr key={u.id} className="border-t">
-                                <td className="p-2">{u.id}</td>
-                                <td className="p-2">{u.email}</td>
-                                <td className="p-2">{u.name}</td>
-                                <td className="p-2">{u.roleId}</td>
-                                <td className="p-2">{u.isActive ? "Yes":"No"}</td>
-                                <td className="p-2">{new Date(u.createdAt).toLocaleString()}</td>
-                            </tr>
-                        ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-        </div>
+      <div className="rounded-xl bg-white shadow-sm ring-1 ring-red-300 p-6 text-red-700">
+        {errText}
+      </div>
     );
+  }
+
+  return (
+    <div className="rounded-xl bg-white shadow-sm ring-1 ring-black/5 overflow-hidden">
+      <table className="min-w-full text-sm">
+        <thead className="bg-slate-50">
+          <tr className="text-left">
+            <th className="px-4 py-3">ID</th>
+            <th className="px-4 py-3">Email</th>
+            <th className="px-4 py-3">Name</th>
+            <th className="px-4 py-3">Active</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data?.map((u) => (
+            <tr key={u.id} className="border-t">
+              <td className="px-4 py-3">{u.id}</td>
+              <td className="px-4 py-3">{u.email}</td>
+              <td className="px-4 py-3">{u.name}</td>
+              <td className="px-4 py-3">{u.isActive ? "Yes" : "No"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }

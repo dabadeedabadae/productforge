@@ -1,8 +1,8 @@
-// src/modules/users/users.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
@@ -11,9 +11,7 @@ export class UsersService {
   async create(createUserDto: CreateUserDto) {
     return this.prisma.user.create({
       data: createUserDto,
-      include: {
-        role: true,
-      },
+      include: { role: true },
     });
   }
 
@@ -29,9 +27,7 @@ export class UsersService {
       take,
       where,
       orderBy,
-      include: {
-        role: true,
-      },
+      include: { role: true },
     });
   }
 
@@ -40,11 +36,7 @@ export class UsersService {
       where: { id },
       include: { role: true },
     });
-
-    if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
-    }
-
+    if (!user) throw new NotFoundException(`User with ID ${id} not found`);
     return user;
   }
 
@@ -56,23 +48,23 @@ export class UsersService {
   }
 
   async update(id: number, updateUserDto: UpdateUserDto) {
-    await this.findOne(id); // Check if user exists
+    await this.findOne(id);
+
+    const data: any = { ...updateUserDto };
+    if (data.password) {
+      data.password = await bcrypt.hash(String(data.password), 10);
+    }
 
     return this.prisma.user.update({
       where: { id },
-      data: updateUserDto,
-      include: {
-        role: true,
-      },
+      data,
+      include: { role: true },
     });
   }
 
   async remove(id: number) {
-    await this.findOne(id); // Check if user exists
-
-    return this.prisma.user.delete({
-      where: { id },
-    });
+    await this.findOne(id);
+    return this.prisma.user.delete({ where: { id } });
   }
 
   async count(where?: any) {

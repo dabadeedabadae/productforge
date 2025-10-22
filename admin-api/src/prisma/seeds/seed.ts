@@ -1,49 +1,76 @@
-// prisma/seeds/seed.ts
+// src/prisma/seeds/seed.ts
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // Create permissions
-  const permissions = await Promise.all([
-    prisma.permission.create({
-      data: { name: 'users.read', description: 'Read users' },
+  // 1) роли
+  const [adminRole, managerRole, viewerRole] = await Promise.all([
+    prisma.role.upsert({
+      where: { name: 'admin' },
+      update: {},
+      create: { name: 'admin', description: 'Full access' },
     }),
-    prisma.permission.create({
-      data: { name: 'users.write', description: 'Write users' },
+    prisma.role.upsert({
+      where: { name: 'manager' },
+      update: {},
+      create: { name: 'manager', description: 'Manage resources' },
     }),
-    prisma.permission.create({
-      data: { name: 'roles.read', description: 'Read roles' },
-    }),
-    prisma.permission.create({
-      data: { name: 'roles.write', description: 'Write roles' },
+    prisma.role.upsert({
+      where: { name: 'viewer' },
+      update: {},
+      create: { name: 'viewer', description: 'Read-only' },
     }),
   ]);
 
-  // Create admin role
-  const adminRole = await prisma.role.create({
+  // 2) permissions
+  const permNames = [
+    'users.read',
+    'users.write',
+    'roles.read',
+    'roles.write',
+    'permissions.read',
+    'permissions.write',
+  ];
+
+  const createdPerms = await Promise.all(
+    permNames.map((name) =>
+      prisma.permission.upsert({
+        where: { name },
+        update: {},
+        create: { name, description: name },
+      }),
+    ),
+  );
+
+  // 3) прикрепим все права к роли admin
+  await prisma.role.update({
+    where: { id: adminRole.id },
     data: {
-      name: 'admin',
-      description: 'Administrator with full access',
       permissions: {
-        connect: permissions.map(p => ({ id: p.id })),
+        set: [], // очищаем, чтобы не дублировать при повторном запуске
+        connect: createdPerms.map((p) => ({ id: p.id })),
       },
     },
   });
 
-  // Create admin user
-  const hashedPassword = await bcrypt.hash('admin123', 10);
-  await prisma.user.create({
-    data: {
+  // 4) создадим/обновим пользователя-админа (UPsert, а не update)
+  const passwordHash = await bcrypt.hash('Admin123!', 10);
+
+  const adminUser = await prisma.user.upsert({
+    where: { email: 'admin@example.com' },
+    update: { roleId: adminRole.id }, // если существовал — просто убедимся, что роль admin
+    create: {
       email: 'admin@example.com',
-      password: hashedPassword,
-      name: 'Admin User',
+      name: 'Admin',
+      password: passwordHash,
       roleId: adminRole.id,
     },
+    include: { role: true },
   });
 
-  console.log('Seed data created successfully');
+  console.log('Seed OK. Admin:', adminUser.email, 'role:', adminUser.role.name);
 }
 
 main()
