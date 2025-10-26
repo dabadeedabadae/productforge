@@ -20,8 +20,7 @@ async function bootstrap() {
       transform: true,
     }),
   );
-
-  // Глобальный префикс API
+  
   app.setGlobalPrefix('api/admin');
 
   const port = Number(process.env.PORT) || 3000;
@@ -29,3 +28,5 @@ async function bootstrap() {
   console.log(`Application is running on: ${await app.getUrl()}`);
 }
 bootstrap();
+
+
