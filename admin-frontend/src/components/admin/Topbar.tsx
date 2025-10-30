@@ -2,10 +2,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
   return (
     <header className="h-16 w-full border-b bg-neutral-50">
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4">
-        <div className="flex items-center gap-3">
-          <svg width="28" height="28" viewBox="0 0 24 24" className="text-black">
-            <path fill="currentColor" d="M4 6l8-4l8 4l-8 4zM4 12l8-4l8 4l-8 4zM4 18l8-4l8 4l-8 4z" />
-          </svg>
+        <div className="flex items-center gap-2">
           <span className="text-lg font-semibold">ProductForge</span>
         </div>
         <button

@@ -13,7 +13,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import configuration from './config/configuration';
-
+import { TemplatesModule } from './modules/templates/templates.module';
 
 
 @Module({
@@ -28,6 +28,7 @@ import configuration from './config/configuration';
     RolesModule,
     PermissionsModule,
     DashboardModule,
+    TemplatesModule,
   ],
   providers: [
     {

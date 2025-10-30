@@ -10,17 +10,23 @@ datasource db {
 }
 
 model User {
-  id        Int        @id @default(autoincrement())
-  email     String     @unique
-  password  String
-  name      String
-  roleId    Int
-  role      Role       @relation(fields: [roleId], references: [id])
-  auditLogs AuditLog[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  isActive  Boolean    @default(true)
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  password String
+  name     String
+  roleId   Int
+  role     Role   @relation(fields: [roleId], references: [id])
 
+  auditLogs AuditLog[]
+
+  // ОБРАТНАЯ сторона связи (имя relation ДОЛЖНО совпадать)
+  createdTemplates Template[] @relation("TemplateCreatedBy")
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([roleId])
   @@map("users")
 }
 
@@ -60,5 +66,25 @@ model AuditLog {
   userAgent String?
   createdAt DateTime @default(now())
 
+  @@index([userId])
   @@map("audit_logs")
+}
+
+model Template {
+  id          Int       @id @default(autoincrement())
+  title       String
+  slug        String    @unique
+  description String    @default("")
+  html        String
+  isPublished Boolean   @default(false)
+
+  // ПРЯМАЯ сторона той же связи ("TemplateCreatedBy")
+  createdById Int?
+  createdBy   User?     @relation("TemplateCreatedBy", fields: [createdById], references: [id])
+  @@index([createdById])
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("templates")
 }
