@@ -9,7 +9,9 @@ export type TemplateForm = {
   title: string;
   slug: string;
   description?: string;
-  html: string;            // 👈 ключевое: теперь html
+  html: string;
+  // 👇 НОВОЕ: сюда будем писать JSON как строку
+  schemaJson?: string;
 };
 
 type Props = {
@@ -20,10 +22,23 @@ type Props = {
 
 export default function TemplateEditor({ initial, onSubmit, submitting }: Props) {
   const [form, setForm] = useState<TemplateForm>(
-    initial ?? { title: "", slug: "", description: "", html: "<h1>New Template</h1>" }
+    initial ?? {
+      title: "",
+      slug: "",
+      description: "",
+      html: "<h1>New Template</h1>",
+      // 👇 можно дать дефолтный пример, чтобы не писать с нуля
+      schemaJson: `{
+  "version": 1,
+  "name": "default-template",
+  "variables": [
+    { "name": "title", "type": "string", "label": "Заголовок" }
+  ]
+}`
+    }
   );
 
-  // авто-генерация slug
+  // авто-генерация slug только если это новый шаблон
   useEffect(() => {
     if (!initial) {
       setForm((f) => ({ ...f, slug: slugify(f.title) }));
@@ -74,6 +89,26 @@ export default function TemplateEditor({ initial, onSubmit, submitting }: Props)
           />
         </div>
 
+        {/* 👇 НОВЫЙ БЛОК ДЛЯ JSON */}
+        <div className="grid gap-3">
+          <label className="text-sm font-medium">Schema JSON (для ИИ)</label>
+          <textarea
+            className="border rounded p-3 min-h-[220px] font-mono text-sm"
+            value={form.schemaJson ?? ""}
+            onChange={(e) => setForm({ ...form, schemaJson: e.target.value })}
+            spellCheck={false}
+            placeholder={`{
+  "version": 1,
+  "variables": [
+    { "name": "title", "type": "string" }
+  ]
+}`}
+          />
+          <p className="text-xs text-gray-500">
+            Здесь ты описываешь структуру шаблона, которую потом будет заполнять ИИ.
+          </p>
+        </div>
+
         <div className="flex gap-3">
           <Button onClick={() => onSubmit(form)} disabled={submitting}>
             {submitting ? "Saving..." : "Save"}
@@ -84,7 +119,6 @@ export default function TemplateEditor({ initial, onSubmit, submitting }: Props)
       <Card>
         <div className="mb-3 text-sm font-medium opacity-80">Live preview</div>
         <div className="border rounded overflow-hidden min-h-[420px]">
-          {/* На проде лучше прогонять через DOMPurify */}
           <iframe
             className="w-full h-[520px] bg-white"
             sandbox=""

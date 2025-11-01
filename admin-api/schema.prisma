@@ -78,7 +78,8 @@ model Template {
   html        String
   isPublished Boolean   @default(false)
 
-  // ПРЯМАЯ сторона той же связи ("TemplateCreatedBy")
+  schemaJson  Json?     @map("schema_json")
+
   createdById Int?
   createdBy   User?     @relation("TemplateCreatedBy", fields: [createdById], references: [id])
   @@index([createdById])

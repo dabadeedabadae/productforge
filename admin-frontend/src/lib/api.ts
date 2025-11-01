@@ -1,28 +1,57 @@
-import axios from "axios";
+// admin-frontend/src/lib/api.ts
+import axios, { AxiosError } from "axios";
+
+// 👇 ЖЁСТКО говорим: ходи в Nest на 3000
+const API_BASE = "http://localhost:3000/api/admin";
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/admin",
-  headers: { "Content-Type": "application/json" },
+  baseURL: API_BASE,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("token");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
 
+// src/lib/api.ts
 api.interceptors.response.use(
   (res) => {
     const payload = res.data;
     if (payload && typeof payload === "object" && "data" in payload) {
-      return payload.data;
+      return (payload as any).data;
     }
     return payload;
   },
-  (err) => Promise.reject(err)
+  (error: AxiosError | any) => {
+    console.error("API ERROR RAW:", error);
+    console.error(
+      "API ERROR SERIALIZED:",
+      JSON.stringify(
+        {
+          message: error?.message,
+          status: error?.response?.status,
+          data: error?.response?.data,
+          url: error?.config?.url,
+          method: error?.config?.method,
+        },
+        null,
+        2
+      )
+    );
+    return Promise.reject(error);
+  }
 );
 
-export default api;            // 👈 default-экспорт
-export { api };                // (опционально) named, если где-то уже использовал
+
+export default api;
+export { api };

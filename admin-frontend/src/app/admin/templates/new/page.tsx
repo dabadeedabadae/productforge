@@ -12,29 +12,39 @@ export default function NewTemplatePage() {
   const handleSubmit = async (values: TemplateForm) => {
     setSaving(true);
     try {
-      const payload = {
-        title: values.title?.trim() ?? "",
-        slug: values.slug?.trim() ?? "",
-        description: values.description?.trim() ?? "",
-        // 👇 пробуем все популярные варианты из редактора
-        html: values.html ?? (values as any).contentHtml ?? (values as any).content ?? "",
-      };
+      const html =
+        values.html ??
+        (values as any).contentHtml ??
+        (values as any).content ??
+        "";
 
-      // на всякий пожарный: если html пустой — покажем сразу, чтобы не долбить бэк
-      if (!payload.html) {
-        alert("HTML/content is empty — редактор не вернул контент");
-        return;
+      // 👇 вот это главное
+      let schemaJson: any = null;
+      if (values.schemaJson && values.schemaJson.trim().length > 0) {
+        try {
+          schemaJson = JSON.parse(values.schemaJson);
+        } catch (e) {
+          alert("JSON в поле Schema JSON некорректный. Исправь и сохрани ещё раз.");
+          return;
+        }
       }
 
-      await createTemplate(payload);
+      await createTemplate({
+        title: values.title?.trim() ?? "Untitled",
+        slug: values.slug?.trim() ?? `template-${Date.now()}`,
+        description: values.description?.trim() ?? "",
+        html,
+        isPublished: false,
+        schemaJson, // 👈 теперь это объект, а не строка
+      });
+
       router.push("/admin/templates");
     } catch (err: any) {
-      // тут вытащим, что сказал сервер
       console.error("Create template failed:", err?.response?.data ?? err);
       alert(
-        err?.response?.data?.message ??
-          err?.response?.data?.error ??
-          "Failed to create template (see console)"
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Не удалось создать шаблон (смотри консоль)"
       );
     } finally {
       setSaving(false);

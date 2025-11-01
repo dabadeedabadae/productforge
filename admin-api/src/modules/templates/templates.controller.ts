@@ -1,9 +1,10 @@
-// src/modules/templates/templates.controller.ts
 import { Body, Controller, Get, Param, Post, Put, Delete, Query } from '@nestjs/common';
 import { TemplatesService } from './templates.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
+import { Public } from '../../common/decorators/public.decorator';
 
+@Public() // 👈 вот это — главное
 @Controller('templates')
 export class TemplatesController {
   constructor(private readonly service: TemplatesService) {}

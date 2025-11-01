@@ -2,46 +2,66 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import TemplateEditor, { TemplateForm } from "@/components/admin/TemplateEditor";
 import { getTemplate, updateTemplate } from "@/lib/templates";
-import type { Template } from "@/types/template";
+import TemplateEditor, { type TemplateForm } from "@/components/admin/TemplateEditor";
 
 export default function EditTemplatePage() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams();
   const router = useRouter();
-  const [data, setData] = useState<Template | null>(null);
+  const id = Number(params?.id);
+  const [tpl, setTpl] = useState<any>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (!id) return;
     (async () => {
-      const t = await getTemplate(Number(id));
-      setData(t);
+      const data = await getTemplate(id);
+      setTpl(data);
     })();
   }, [id]);
 
-  async function handleSubmit(values: TemplateForm) {
+  const handleSubmit = async (values: TemplateForm) => {
     setSaving(true);
     try {
-      await updateTemplate(Number(id), values);
+      const html =
+        (values as any).html ??
+        (values as any).contentHtml ??
+        (values as any).content ??
+        "";
+
+      await updateTemplate(id, {
+        title: values.title?.trim() ?? "",
+        slug: values.slug?.trim() ?? "",
+        description: values.description?.trim() ?? "",
+        html,
+      });
+
       router.push("/admin/templates");
     } finally {
       setSaving(false);
     }
-  }
+  };
 
-  if (!data) return <div className="p-6">Loading...</div>;
+  if (!tpl) return <div className="p-6">Loading...</div>;
 
   return (
-    <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Edit: {data.title}</h1>
+    <div className="p-6">
+      <h1 className="mb-4 text-xl font-semibold">
+        Edit template: {tpl.title ?? "Без названия"}
+      </h1>
       <TemplateEditor
         submitting={saving}
         onSubmit={handleSubmit}
-        initial={{
-          title: data.title,
-          slug: data.slug,
-          description: data.description ?? "",
-          contentHtml: data.contentHtml,
+        // 👇 вот тут главное — отдать редактору правильное поле
+        initialValues={{
+          title: tpl.title ?? "",
+          slug: tpl.slug ?? "",
+          description: tpl.description ?? "",
+          html:
+            (tpl as any).html ??
+            (tpl as any).contentHtml ??
+            (tpl as any).content ??
+            "",
         }}
       />
     </div>
