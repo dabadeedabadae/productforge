@@ -89,3 +89,19 @@ model Template {
 
   @@map("templates")
 }
+model ChatSession {
+  id        Int           @id @default(autoincrement())
+  title     String        @default("New chat")
+  messages  ChatMessage[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model ChatMessage {
+  id        Int        @id @default(autoincrement())
+  session   ChatSession @relation(fields: [sessionId], references: [id])
+  sessionId Int
+  role      String      // "user" | "assistant" | "system"
+  content   String
+  createdAt DateTime    @default(now())
+}

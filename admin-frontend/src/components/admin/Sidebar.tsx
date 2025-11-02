@@ -3,11 +3,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const links = [
-  { href: "/admin/dashboards", label: "Dashboards",  icon: HomeIcon },
-  { href: "/admin/users",      label: "Users",       icon: HomeIcon },
-  { href: "/admin/roles",      label: "Roles",       icon: HomeIcon },
-  { href: "/admin/permissions",label: "Permissions", icon: HomeIcon },
-  { href: "/admin/templates",  label: "Templates",   icon: HomeIcon }, // <-- добавили
+  { href: "/admin/dashboards",  label: "Dashboards",  icon: HomeIcon },
+  { href: "/admin/users",       label: "Users",       icon: HomeIcon },
+  { href: "/admin/roles",       label: "Roles",       icon: HomeIcon },
+  { href: "/admin/permissions", label: "Permissions", icon: HomeIcon },
+  { href: "/admin/templates",   label: "Templates",   icon: HomeIcon },
+  { href: "/admin/chat",        label: "Chat",        icon: ChatIcon },
 ];
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -44,8 +45,26 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 function HomeIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" {...props}>
-      <path d="M3 10.5L12 4l9 6.5V20a2 2 0 0 1-2 2h-4v-6H9v6H5a2 2 0 0 1-2-2v-9.5Z"
-        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M3 10.5L12 4l9 6.5V20a2 2 0 0 1-2 2h-4v-6H9v6H5a2 2 0 0 1-2-2v-9.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+function ChatIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <path
+        d="M5 5h14v9H8l-3 3V5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

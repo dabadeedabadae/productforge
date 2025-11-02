@@ -14,7 +14,9 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import configuration from './config/configuration';
 import { TemplatesModule } from './modules/templates/templates.module';
-
+import { AiModule } from './modules/ai/ai.module';
+import { ChatModule } from './modules/ai/chat.module';
+import { DocGenModule } from './modules/ai/docgen.module';
 
 @Module({
   imports: [
@@ -29,6 +31,9 @@ import { TemplatesModule } from './modules/templates/templates.module';
     PermissionsModule,
     DashboardModule,
     TemplatesModule,
+    AiModule,
+    ChatModule,
+    DocGenModule,
   ],
   providers: [
     {

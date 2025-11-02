@@ -25,7 +25,6 @@
     "seed": "prisma db seed",
     "db:setup": "npm run prisma:migrate && npm run seed",
     "db:reset": "prisma migrate reset --force && npm run seed"
-    
   },
   "prisma": {
     "seed": "node -r ts-node/register ./src/prisma/seeds/seed.ts"
@@ -42,6 +41,7 @@
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "groq-sdk": "^0.34.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
