@@ -9,6 +9,8 @@ const links = [
   { href: "/admin/permissions", label: "Permissions", icon: HomeIcon },
   { href: "/admin/templates",   label: "Templates",   icon: HomeIcon },
   { href: "/admin/chat",        label: "Chat",        icon: ChatIcon },
+  { href: "/admin/docgen",      label: "Docgen",      icon: HomeIcon },
+  { href: "/admin/docgen/history", label: "Doc history", icon: HomeIcon },
 ];
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {

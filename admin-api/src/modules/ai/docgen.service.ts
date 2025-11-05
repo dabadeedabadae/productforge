@@ -4,7 +4,7 @@ import Groq from 'groq-sdk';
 
 @Injectable()
 export class DocGenService {
-  private groq: Groq;
+  private readonly groq: Groq;
 
   constructor(private readonly prisma: PrismaService) {
     this.groq = new Groq({
@@ -12,56 +12,94 @@ export class DocGenService {
     });
   }
 
+
   async generatePackage(input: {
     concept: string;
     domain?: string;
-    docs?: string[]; // ['srs', 'api', 'db', ...]
-    locale?: 'ru' | 'en';
+    docs?: string[]; 
+    locale?: string;
   }) {
-    const { concept, domain = 'generic', docs = ['srs', 'api', 'db'], locale = 'ru' } = input;
+    const { concept, domain = 'generic', locale = 'ru' } = input;
 
-    // 1. забираем из БД все шаблоны, у которых в schemaJson есть kind и он входит в docs
-    const templates = await this.prisma.template.findMany({
-      where: {
-        // мы не можем по JSON везде фильтрануть, поэтому забираем всё и фильтруем руками
+    
+    const templates = await this.prisma.template.findMany();
+
+  
+    console.log(
+      'Docgen templates:',
+      templates.map((t: any) => ({
+        id: t.id,
+        title: t.title,
+        kind: t.schemaJson?.kind,
+      })),
+    );
+
+    const srsTemplate = templates.find(
+      (t: any) => t.schemaJson && t.schemaJson.kind === 'srs',
+    );
+
+    if (!srsTemplate) {
+      throw new NotFoundException('SRS template with schemaJson.kind = "srs" not found');
+    }
+
+    const filledSrs = await this.fillByGroq({
+      schemaJson: srsTemplate.schemaJson,
+      concept,
+      domain,
+      locale,
+    });
+
+    const docs = {
+      srs: {
+        templateId: srsTemplate.id,
+        title: srsTemplate.title,
+        data: filledSrs,
       },
-    });
+    };
 
-    const filtered = templates.filter((t: any) => {
-      const k = (t as any).schemaJson?.kind;
-      return k && docs.includes(k);
-    });
-
-    if (!filtered.length) {
-      throw new NotFoundException('No templates found for requested docs');
-    }
-
-    const result: Record<string, any> = {};
-
-    for (const tpl of filtered) {
-      const kind = (tpl as any).schemaJson.kind as string;
-
-      // 2. для каждого шаблона вызываем Groq
-      const filled = await this.fillByGroq({
-        schemaJson: tpl.schemaJson,
-        concept,
-        domain,
-        locale,
-      });
-
-      result[kind] = {
-        templateId: tpl.id,
-        title: tpl.title,
-        data: filled,
-      };
-    }
-
-    return {
+    const final = {
       concept,
       domain,
       generatedAt: new Date().toISOString(),
-      docs: result,
+      docs,
     };
+
+    const saved = await this.prisma.generatedDocPackage.create({
+      data: {
+        concept,
+        domain: domain || null,
+        docs, 
+      },
+    });
+
+    return {
+      id: saved.id,
+      ...final,
+    };
+  }
+
+  async listPackages() {
+    return this.prisma.generatedDocPackage.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        concept: true,
+        domain: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async getPackage(id: number) {
+    const pkg = await this.prisma.generatedDocPackage.findUnique({
+      where: { id },
+    });
+
+    if (!pkg) {
+      throw new NotFoundException('Doc package not found');
+    }
+
+    return pkg;
   }
 
   private async fillByGroq(params: {
@@ -74,8 +112,8 @@ export class DocGenService {
 
     const systemPrompt = `
 Ты — инженер требований и архитектор. Тебе дают структуру документа (JSON) и описание проекта.
-Ты обязан вернуть ТОЛЬКО JSON ТАКОЙ ЖЕ СТРУКТУРЫ, но со заполненными полями. Язык: ${locale}.
-Если раздел требует список — сделай 3-7 пунктов. Если это API — опиши эндпоинты подробно.
+Твоя задача — вернуть ТОЛЬКО JSON ТАКОЙ ЖЕ СТРУКТУРЫ, но со смысловыми значениями. Язык: ${locale}.
+Если раздел требует список — делай 3–7 осмысленных пунктов.
 `;
 
     const userPrompt = `

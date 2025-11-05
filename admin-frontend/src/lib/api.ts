@@ -52,6 +52,13 @@ api.interceptors.response.use(
   }
 );
 
+// const res = await api.post("/ai/docgen/generate", {
+//   concept: "AI-система, которая принимает заявки студентов и автоматически отвечает на типовые вопросы, а сложные отправляет в деканат.",
+//   domain: "university",
+//   docs: ["srs", "api", "db", "userflows"],
+//   locale: "ru"
+// });
+// console.log(res);
 
 export default api;
 export { api };

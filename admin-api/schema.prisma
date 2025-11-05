@@ -105,3 +105,10 @@ model ChatMessage {
   content   String
   createdAt DateTime    @default(now())
 }
+model GeneratedDocPackage {
+  id        Int      @id @default(autoincrement())
+  concept   String
+  domain    String?
+  docs      Json     // тут будет весь объект result.docs
+  createdAt DateTime @default(now())
+}

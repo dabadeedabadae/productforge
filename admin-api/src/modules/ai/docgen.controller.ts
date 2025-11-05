@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { DocGenService } from './docgen.service';
 import { Public } from '../../common/decorators/public.decorator';
 
@@ -15,5 +15,15 @@ export class DocGenController {
       docs: body.docs,
       locale: body.locale ?? 'ru',
     });
+  }
+
+  @Get('packages')
+  async listPackages() {
+    return this.docgen.listPackages();
+  }
+
+  @Get('packages/:id')
+  async getPackage(@Param('id') id: string) {
+    return this.docgen.getPackage(Number(id));
   }
 }
