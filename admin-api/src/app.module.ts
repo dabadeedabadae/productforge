@@ -17,6 +17,8 @@ import { TemplatesModule } from './modules/templates/templates.module';
 import { AiModule } from './modules/ai/ai.module';
 import { ChatModule } from './modules/ai/chat.module';
 import { DocGenModule } from './modules/ai/docgen.module';
+import { KBModule } from './modules/kb/kb.module';
+
 
 @Module({
   imports: [
@@ -34,6 +36,7 @@ import { DocGenModule } from './modules/ai/docgen.module';
     AiModule,
     ChatModule,
     DocGenModule,
+    KBModule,
   ],
   providers: [
     {
