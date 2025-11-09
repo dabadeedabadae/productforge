@@ -19,9 +19,8 @@ model User {
 
   auditLogs AuditLog[]
 
-  // ОБРАТНАЯ сторона связи (имя relation ДОЛЖНО совпадать)
   createdTemplates Template[] @relation("TemplateCreatedBy")
-
+  kbItemsCreated KBItem[] @relation("KBItemCreatedBy")
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -29,6 +28,7 @@ model User {
   @@index([roleId])
   @@map("users")
 }
+
 
 model Role {
   id          Int          @id @default(autoincrement())
@@ -110,5 +110,74 @@ model GeneratedDocPackage {
   concept   String
   domain    String?
   docs      Json     // тут будет весь объект result.docs
+  analyses  AnalysisSnapshot[] @relation("PackageAnalyses")
   createdAt DateTime @default(now())
+}
+model KBItem {
+  id           Int              @id @default(autoincrement())
+  title        String
+  slug         String           @unique
+  summary      String           @default("")
+  content      String           @default("") // markdown/описание
+  domain       String?
+  solutionType String?          // например: "auth", "payments", "realtime", "ml", ...
+  techStack    Json?            // { backend, frontend, db, services: [...] }
+  createdById  Int?
+  createdBy    User?            @relation("KBItemCreatedBy", fields: [createdById], references: [id])
+
+  tags         KBItemTag[]
+  categories   KBItemCategory[]
+
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@map("kb_items")
+}
+
+model Tag {
+  id     Int        @id @default(autoincrement())
+  name   String     @unique
+  items  KBItemTag[]
+
+  @@map("tags")
+}
+
+model Category {
+  id     Int              @id @default(autoincrement())
+  name   String           @unique
+  items  KBItemCategory[]
+
+  @@map("categories")
+}
+
+model KBItemTag {
+  kbItemId Int
+  tagId    Int
+  kbItem   KBItem @relation(fields: [kbItemId], references: [id])
+  tag      Tag    @relation(fields: [tagId], references: [id])
+
+  @@id([kbItemId, tagId])
+  @@map("kb_item_tags")
+}
+
+model KBItemCategory {
+  kbItemId   Int
+  categoryId Int
+  kbItem     KBItem   @relation(fields: [kbItemId], references: [id])
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@id([kbItemId, categoryId])
+  @@map("kb_item_categories")
+}
+
+model AnalysisSnapshot {
+  id        Int       @id @default(autoincrement())
+  concept   String
+  domain    String?
+  packageId Int?
+  package   GeneratedDocPackage? @relation("PackageAnalyses", fields: [packageId], references: [id])
+  result    Json       // полный JSON ответа анализа (см. ниже формат)
+  createdAt DateTime   @default(now())
+
+  @@map("analysis_snapshots")
 }
