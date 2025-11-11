@@ -3,7 +3,9 @@ import { PromptPresetsService } from './prompt-presets.service';
 import { CreatePromptPresetDto } from './dto/create-prompt-preset.dto';
 import { UpdatePromptPresetDto } from './dto/update-prompt-preset.dto';
 import { DocumentType } from '@prisma/client';
+import { Public } from '../../common/decorators/public.decorator';
 
+@Public()
 @Controller('prompt-presets')
 export class PromptPresetsController {
   constructor(private readonly service: PromptPresetsService) {}

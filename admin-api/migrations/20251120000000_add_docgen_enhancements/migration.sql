@@ -1,12 +1,12 @@
 -- CreateEnum (only if not exists)
-DO $$ 
+DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'DocumentType') THEN
         CREATE TYPE "DocumentType" AS ENUM ('SRS', 'API', 'DB', 'USERFLOWS');
     END IF;
 END $$;
 
-DO $$ 
+DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'DetailLevel') THEN
         CREATE TYPE "DetailLevel" AS ENUM ('BRIEF', 'STANDARD', 'DETAILED');

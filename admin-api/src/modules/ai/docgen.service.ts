@@ -281,6 +281,7 @@ export class DocGenService {
       locale: options?.locale || 'ru',
       detailLevel: pkg.detailLevel,
       promptPreset,
+      documentType,
       sectionId,
     });
 
