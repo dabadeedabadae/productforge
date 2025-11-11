@@ -70,22 +70,35 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+enum DocumentType {
+  SRS
+  API
+  DB
+  USERFLOWS
+}
+
 model Template {
-  id          Int       @id @default(autoincrement())
-  title       String
-  slug        String    @unique
-  description String    @default("")
-  html        String
-  isPublished Boolean   @default(false)
+  id            Int          @id @default(autoincrement())
+  title         String
+  slug          String       @unique
+  description   String       @default("")
+  html          String
+  isPublished   Boolean      @default(false)
 
-  schemaJson  Json?     @map("schema_json")
+  documentType  DocumentType @default(SRS)
+  schemaJson    Json?        @map("schema_json")
+  promptPresetId Int?
+  promptPreset  PromptPreset? @relation(fields: [promptPresetId], references: [id])
 
-  createdById Int?
-  createdBy   User?     @relation("TemplateCreatedBy", fields: [createdById], references: [id])
+  createdById   Int?
+  createdBy     User?        @relation("TemplateCreatedBy", fields: [createdById], references: [id])
+  
   @@index([createdById])
+  @@index([documentType])
+  @@index([promptPresetId])
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   @@map("templates")
 }
@@ -105,13 +118,69 @@ model ChatMessage {
   content   String
   createdAt DateTime    @default(now())
 }
+enum DetailLevel {
+  BRIEF
+  STANDARD
+  DETAILED
+}
+
+model PromptPreset {
+  id          Int          @id @default(autoincrement())
+  name        String
+  description String       @default("")
+  documentType DocumentType
+  systemPrompt String
+  userPromptTemplate String // шаблон с плейсхолдерами {concept}, {domain}, {schemaJson}, {detailLevel}, {sectionId}
+  isDefault   Boolean      @default(false)
+  version     String       @default("v1") // для A/B тестирования: v1, v2, etc.
+  
+  templates   Template[]
+  packages    GeneratedDocPackage[]
+  sections    GeneratedDocSection[]
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([documentType])
+  @@index([isDefault])
+  @@map("prompt_presets")
+}
+
 model GeneratedDocPackage {
-  id        Int      @id @default(autoincrement())
-  concept   String
-  domain    String?
-  docs      Json     // тут будет весь объект result.docs
-  analyses  AnalysisSnapshot[] @relation("PackageAnalyses")
-  createdAt DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  concept       String
+  domain        String?
+  detailLevel   DetailLevel @default(STANDARD)
+  promptPresetId Int?
+  promptPreset  PromptPreset? @relation(fields: [promptPresetId], references: [id])
+  docs          Json     // тут будет весь объект result.docs
+  analyses      AnalysisSnapshot[] @relation("PackageAnalyses")
+  sections      GeneratedDocSection[]
+  createdAt     DateTime @default(now())
+
+  @@index([promptPresetId])
+  @@map("generated_doc_packages")
+}
+
+model GeneratedDocSection {
+  id            Int      @id @default(autoincrement())
+  packageId     Int
+  package       GeneratedDocPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  documentType  DocumentType
+  sectionId     String   // id секции из schemaJson (например, "intro", "scope")
+  sectionTitle  String
+  content       Json     // содержимое секции
+  markdown      String?  // markdown версия контента
+  promptPresetId Int?
+  promptPreset  PromptPreset? @relation(fields: [promptPresetId], references: [id])
+  regeneratedAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([packageId])
+  @@index([documentType])
+  @@index([sectionId])
+  @@map("generated_doc_sections")
 }
 model KBItem {
   id           Int              @id @default(autoincrement())

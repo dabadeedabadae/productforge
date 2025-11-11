@@ -1,6 +1,7 @@
 // src/modules/templates/dto/create-template.dto.ts
-import { IsBoolean, IsOptional, IsString, IsObject } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsObject, IsEnum, IsInt } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { DocumentType } from '@prisma/client';
 
 export class CreateTemplateDto {
   @IsString()
@@ -21,7 +22,10 @@ export class CreateTemplateDto {
   @IsBoolean()
   isPublished?: boolean;
 
-  // 👇 ВОТ ЭТОГО НЕ ХВАТАЛО
+  @IsOptional()
+  @IsEnum(DocumentType)
+  documentType?: DocumentType;
+
   @IsOptional()
   @Transform(({ value }) => {
     // если фронт прислал строку из textarea — парсим
@@ -36,4 +40,8 @@ export class CreateTemplateDto {
   })
   @IsObject()
   schemaJson?: Record<string, any>;
+
+  @IsOptional()
+  @IsInt()
+  promptPresetId?: number;
 }

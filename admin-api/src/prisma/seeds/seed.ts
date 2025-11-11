@@ -51,9 +51,10 @@ async function ensureTemplate(opts: {
   title: string;
   description: string;
   schemaJson: any;
+  documentType?: 'SRS' | 'API' | 'DB' | 'USERFLOWS';
   createdById?: number;
 }) {
-  const { slug, title, description, schemaJson, createdById } = opts;
+  const { slug, title, description, schemaJson, documentType = 'SRS', createdById } = opts;
 
   const html = `<h1>{{title}}</h1>
 <p><strong>Template slug:</strong> ${slug}</p>
@@ -67,6 +68,7 @@ async function ensureTemplate(opts: {
       html,
       isPublished: true,
       schemaJson,
+      documentType: documentType as any,
       ...(createdById ? { createdById } : {}),
     },
     create: {
@@ -76,7 +78,66 @@ async function ensureTemplate(opts: {
       html,
       isPublished: true,
       schemaJson,
+      documentType: documentType as any,
       ...(createdById ? { createdById } : {}),
+    },
+  });
+}
+
+async function ensurePromptPreset(opts: {
+  name: string;
+  description: string;
+  documentType: 'SRS' | 'API' | 'DB' | 'USERFLOWS';
+  systemPrompt: string;
+  userPromptTemplate: string;
+  isDefault?: boolean;
+  version?: string;
+}) {
+  const { name, description, documentType, systemPrompt, userPromptTemplate, isDefault = false, version = 'v1' } = opts;
+
+  // Если устанавливается как дефолтный, снимаем флаг с других
+  if (isDefault) {
+    await prisma.promptPreset.updateMany({
+      where: {
+        documentType: documentType as any,
+        isDefault: true,
+      },
+      data: {
+        isDefault: false,
+      },
+    });
+  }
+
+  // Ищем существующий пресет
+  const existing = await prisma.promptPreset.findFirst({
+    where: {
+      name,
+      documentType: documentType as any,
+      version,
+    },
+  });
+
+  if (existing) {
+    return prisma.promptPreset.update({
+      where: { id: existing.id },
+      data: {
+        description,
+        systemPrompt,
+        userPromptTemplate,
+        isDefault,
+      },
+    });
+  }
+
+  return prisma.promptPreset.create({
+    data: {
+      name,
+      description,
+      documentType: documentType as any,
+      systemPrompt,
+      userPromptTemplate,
+      isDefault,
+      version,
     },
   });
 }
@@ -206,9 +267,8 @@ async function main() {
     include: { role: true },
   });
 
-  // 5) Шаблоны: SRS и API
+  // 5) Шаблоны: SRS, API, DB, USERFLOWS
   const srsSchema = {
-    kind: 'srs',
     title: 'Software Requirements Specification',
     version: 1,
     sections: [
@@ -218,10 +278,14 @@ async function main() {
       { id: 'functional',   title: '4. Функциональные требования', type: 'list' },
       { id: 'nonfunctional',title: '5. Нефункциональные требования', type: 'list' },
     ],
+    intro: '',
+    scope: '',
+    actors: [],
+    functional: [],
+    nonfunctional: [],
   };
 
   const apiSchema = {
-    kind: 'api',
     title: 'API Specification',
     version: 1,
     sections: [
@@ -232,14 +296,51 @@ async function main() {
       { id: 'errors',     title: '5. Error Handling',  type: 'list' },
       { id: 'rateLimits', title: '6. Rate Limits',     type: 'markdown' },
     ],
+    overview: '',
+    auth: '',
+    models: [],
+    endpoints: [],
+    errors: [],
+    rateLimits: '',
   };
 
-  const [srsTpl, apiTpl] = await Promise.all([
+  const dbSchema = {
+    title: 'Database Model',
+    version: 1,
+    sections: [
+      { id: 'overview', title: '1. Overview', type: 'markdown' },
+      { id: 'tables', title: '2. Tables', type: 'list' },
+      { id: 'relationships', title: '3. Relationships', type: 'list' },
+      { id: 'indexes', title: '4. Indexes', type: 'list' },
+    ],
+    overview: '',
+    tables: [],
+    relationships: [],
+    indexes: [],
+  };
+
+  const userflowsSchema = {
+    title: 'User Flows',
+    version: 1,
+    sections: [
+      { id: 'overview', title: '1. Overview', type: 'markdown' },
+      { id: 'personas', title: '2. Personas', type: 'list' },
+      { id: 'flows', title: '3. User Flows', type: 'list' },
+      { id: 'screens', title: '4. Screens', type: 'list' },
+    ],
+    overview: '',
+    personas: [],
+    flows: [],
+    screens: [],
+  };
+
+  const [srsTpl, apiTpl, dbTpl, userflowsTpl] = await Promise.all([
     ensureTemplate({
       slug: 'srs-default-v1',
       title: 'SRS (default)',
       description: 'Базовый SRS-шаблон',
       schemaJson: srsSchema,
+      documentType: 'SRS',
       createdById: adminUser.id,
     }),
     ensureTemplate({
@@ -247,7 +348,160 @@ async function main() {
       title: 'API Spec (default)',
       description: 'Базовый шаблон API-спецификации',
       schemaJson: apiSchema,
+      documentType: 'API',
       createdById: adminUser.id,
+    }),
+    ensureTemplate({
+      slug: 'db-default-v1',
+      title: 'DB Model (default)',
+      description: 'Базовый шаблон модели БД',
+      schemaJson: dbSchema,
+      documentType: 'DB',
+      createdById: adminUser.id,
+    }),
+    ensureTemplate({
+      slug: 'userflows-default-v1',
+      title: 'User Flows (default)',
+      description: 'Базовый шаблон пользовательских сценариев',
+      schemaJson: userflowsSchema,
+      documentType: 'USERFLOWS',
+      createdById: adminUser.id,
+    }),
+  ]);
+
+  // 5.1) Промпт-пресеты для каждого типа документа
+  const srsSystemPrompt = `Ты — опытный инженер требований и системный аналитик. Твоя задача — создавать детальные, структурированные SRS документы.
+
+Требования:
+- Используй профессиональную терминологию
+- Структурируй информацию логично и последовательно
+- Включай конкретные примеры и сценарии использования
+- Учитывай уровень детализации: {detailLevel}
+- Язык: русский (если не указано иное)`;
+
+  const srsUserPrompt = `Описание системы:
+{concept}
+
+Домен / контекст: {domain}
+
+Уровень детализации: {detailLevel}
+
+Структура документа:
+{schemaJson}
+
+Заполни структуру под этот проект. Верни только JSON без дополнительных комментариев.`;
+
+  const apiSystemPrompt = `Ты — архитектор API и backend-разработчик. Создавай детальные API спецификации.
+
+Требования:
+- Описывай endpoints с методами, параметрами, телами запросов/ответов
+- Включай примеры запросов и ответов
+- Указывай коды ошибок и их значения
+- Описывай модели данных с типами и валидацией
+- Учитывай уровень детализации: {detailLevel}
+- Язык: русский (если не указано иное)`;
+
+  const apiUserPrompt = `Описание системы:
+{concept}
+
+Домен / контекст: {domain}
+
+Уровень детализации: {detailLevel}
+
+Структура документа:
+{schemaJson}
+
+Заполни структуру API спецификации. Верни только JSON без дополнительных комментариев.`;
+
+  const dbSystemPrompt = `Ты — проектировщик баз данных. Создавай детальные схемы БД.
+
+Требования:
+- Описывай таблицы с полями, типами, ограничениями
+- Указывай связи между таблицами (foreign keys)
+- Описывай индексы и их назначение
+- Включай примеры данных
+- Учитывай уровень детализации: {detailLevel}
+- Язык: русский (если не указано иное)`;
+
+  const dbUserPrompt = `Описание системы:
+{concept}
+
+Домен / контекст: {domain}
+
+Уровень детализации: {detailLevel}
+
+Структура документа:
+{schemaJson}
+
+Заполни структуру модели БД. Верни только JSON без дополнительных комментариев.`;
+
+  const userflowsSystemPrompt = `Ты — UX-аналитик и проектировщик интерфейсов. Создавай детальные пользовательские сценарии.
+
+Требования:
+- Описывай персоны пользователей
+- Детализируй user flows с шагами и действиями
+- Описывай экраны и их элементы
+- Включай альтернативные сценарии и обработку ошибок
+- Учитывай уровень детализации: {detailLevel}
+- Язык: русский (если не указано иное)`;
+
+  const userflowsUserPrompt = `Описание системы:
+{concept}
+
+Домен / контекст: {domain}
+
+Уровень детализации: {detailLevel}
+
+Структура документа:
+{schemaJson}
+
+Заполни структуру пользовательских сценариев. Верни только JSON без дополнительных комментариев.`;
+
+  await Promise.all([
+    ensurePromptPreset({
+      name: 'SRS Default v1',
+      description: 'Базовый промпт для SRS',
+      documentType: 'SRS',
+      systemPrompt: srsSystemPrompt,
+      userPromptTemplate: srsUserPrompt,
+      isDefault: true,
+      version: 'v1',
+    }),
+    ensurePromptPreset({
+      name: 'SRS Detailed v2',
+      description: 'Расширенный промпт для детального SRS',
+      documentType: 'SRS',
+      systemPrompt: srsSystemPrompt,
+      userPromptTemplate: srsUserPrompt,
+      isDefault: false,
+      version: 'v2',
+    }),
+    ensurePromptPreset({
+      name: 'API Default v1',
+      description: 'Базовый промпт для API',
+      documentType: 'API',
+      systemPrompt: apiSystemPrompt,
+      userPromptTemplate: apiUserPrompt,
+      isDefault: true,
+      version: 'v1',
+    }),
+    ensurePromptPreset({
+      name: 'DB Default v1',
+      description: 'Базовый промпт для БД',
+      documentType: 'DB',
+      systemPrompt: dbSystemPrompt,
+      userPromptTemplate: dbUserPrompt,
+      isDefault: true,
+      version: 'v1',
+    }),
+    ensurePromptPreset({
+      name: 'User Flows Default v1',
+      description: 'Базовый промпт для User Flows',
+      documentType: 'USERFLOWS',
+      systemPrompt: userflowsSystemPrompt,
+      userPromptTemplate: userflowsUserPrompt,
+      isDefault: true,
+      version: 'v1',
     }),
   ]);
 
@@ -288,7 +542,8 @@ async function main() {
 
   console.log('Seed OK.');
   console.log(`Admin: ${adminUser.email} (role: ${adminUser.role.name})`);
-  console.log(`Templates: SRS#${srsTpl.id}, API#${apiTpl.id}`);
+  console.log(`Templates: SRS#${srsTpl.id}, API#${apiTpl.id}, DB#${dbTpl.id}, UserFlows#${userflowsTpl.id}`);
+  console.log('Prompt presets created for all document types');
 }
 
 main()
