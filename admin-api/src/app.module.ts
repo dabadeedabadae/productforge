@@ -18,6 +18,7 @@ import { AiModule } from './modules/ai/ai.module';
 import { ChatModule } from './modules/ai/chat.module';
 import { DocGenModule } from './modules/ai/docgen.module';
 import { KBModule } from './modules/kb/kb.module';
+import { PromptPresetsModule } from './modules/prompt-presets/prompt-presets.module';
 
 
 @Module({
@@ -37,6 +38,7 @@ import { KBModule } from './modules/kb/kb.module';
     ChatModule,
     DocGenModule,
     KBModule,
+    PromptPresetsModule,
   ],
   providers: [
     {
