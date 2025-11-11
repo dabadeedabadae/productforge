@@ -150,7 +150,7 @@ export default function DocgenPage() {
     activeTab && result ? ((result.docs as any)[activeTab] as DocMeta) : null;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="mx-auto w-full max-w-none p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">AI Doc Generator</h1>
@@ -161,7 +161,8 @@ export default function DocgenPage() {
       </div>
 
       {/* Входные данные */}
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)] gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2.5fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)] gap-6">
+
         <Card className="p-4 space-y-4">
           <div className="grid gap-2">
             <label className="text-sm font-medium">Описание проекта</label>
@@ -213,7 +214,7 @@ export default function DocgenPage() {
             <Button
               onClick={handleAnalyzeKB}
               disabled={kbLoading}
-              className="border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+              className="border border-slate-300 bg-black text-slate-700"
             >
               {kbLoading ? "Анализируем…" : "Анализ (KB)"}
             </Button>
