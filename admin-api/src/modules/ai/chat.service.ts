@@ -12,7 +12,6 @@ export class ChatService {
     });
   }
 
-  // список сессий
   async listSessions() {
     return this.prisma.chatSession.findMany({
       orderBy: { updatedAt: 'desc' },
@@ -24,76 +23,67 @@ export class ChatService {
     });
   }
 
-  // создать новую сессию
   async createSession(title = 'New chat') {
     return this.prisma.chatSession.create({
       data: { title },
-    });
-  }
-
-  // получить сообщения одной сессии
-  async getMessages(sessionId: number) {
-    const session = await this.prisma.chatSession.findUnique({
-      where: { id: sessionId },
-      include: { messages: { orderBy: { createdAt: 'asc' } } },
-    });
-    if (!session) throw new NotFoundException('Chat session not found');
-    return session;
-  }
-
-  // отправить сообщение → получить ответ от Groq → сохранить оба
-  async sendMessage(sessionId: number, userMessage: string) {
-    const session = await this.prisma.chatSession.findUnique({
-      where: { id: sessionId },
-    });
-    if (!session) throw new NotFoundException('Chat session not found');
-
-    // 1) сохраним сообщение пользователя
-    await this.prisma.chatMessage.create({
-      data: {
-        sessionId,
-        role: 'user',
-        content: userMessage,
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
+  }
 
-    // 2) соберём контекст (последние N сообщений)
-    const lastMessages = await this.prisma.chatMessage.findMany({
-      where: { sessionId },
-      orderBy: { createdAt: 'asc' },
-      take: 15,
+  async getMessages(sessionId: string) {
+    const session = await this.prisma.chatSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
+    if (!session) {
+      throw new NotFoundException('Chat session not found');
+    }
 
-    // 3) сделаем запрос в Groq
+    return {
+      ...session,
+      messages: [],
+    };
+  }
+
+  async sendMessage(sessionId: string, userMessage: string) {
+    const session = await this.prisma.chatSession.findUnique({
+      where: { id: sessionId },
+      select: { id: true },
+    });
+    if (!session) {
+      throw new NotFoundException('Chat session not found');
+    }
+
     const completion = await this.groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
         { role: 'system', content: 'Ты ассистент, помогай по шаблонам и ТЗ, отвечай кратко.' },
-        ...lastMessages.map((m) => ({
-          role: m.role as 'user' | 'assistant' | 'system',
-          content: m.content,
-        })),
+        { role: 'user', content: userMessage },
       ],
       temperature: 0.4,
     });
 
     const assistantText = completion.choices[0]?.message?.content ?? '…';
 
-    // 4) сохраним ответ ассистента
-    const assistantMessage = await this.prisma.chatMessage.create({
-      data: {
-        sessionId,
-        role: 'assistant',
-        content: assistantText,
-      },
-    });
-
-    // 5) обновим updatedAt у сессии
     await this.prisma.chatSession.update({
       where: { id: sessionId },
       data: { updatedAt: new Date() },
     });
 
-    return assistantMessage;
+    return {
+      sessionId,
+      user: userMessage,
+      assistant: assistantText,
+    };
   }
 }

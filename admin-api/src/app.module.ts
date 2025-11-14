@@ -19,13 +19,24 @@ import { ChatModule } from './modules/ai/chat.module';
 import { DocGenModule } from './modules/ai/docgen.module';
 import { KBModule } from './modules/kb/kb.module';
 import { PromptPresetsModule } from './modules/prompt-presets/prompt-presets.module';
-
+import { ThrottlerModule, ThrottlerGuard, ThrottlerModuleOptions } from '@nestjs/throttler';
+import { ChatTreeModule } from './modules/chat-tree/chat-tree.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
+    }),
+    ThrottlerModule.forRootAsync({
+      useFactory: (): ThrottlerModuleOptions => ({
+        throttlers: [
+          {
+            ttl: Number(process.env.THROTTLE_TTL ?? 60),
+            limit: Number(process.env.THROTTLE_LIMIT ?? 10),
+          },
+        ],
+      }),
     }),
     PrismaModule,
     AuthModule,
@@ -39,8 +50,13 @@ import { PromptPresetsModule } from './modules/prompt-presets/prompt-presets.mod
     DocGenModule,
     KBModule,
     PromptPresetsModule,
+    ChatTreeModule,
   ],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

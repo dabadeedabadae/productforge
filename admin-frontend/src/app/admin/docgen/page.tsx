@@ -1,10 +1,12 @@
 // admin-frontend/src/app/admin/docgen/page.tsx
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
+import { fetchChatSessions, ChatSessionSummary } from "@/lib/chat-tree";
 
 type DocKey = "srs" | "api" | "db" | "userflows";
 type DetailLevel = "BRIEF" | "STANDARD" | "DETAILED";
@@ -137,6 +139,10 @@ export default function DocgenPage() {
   const [sections, setSections] = useState<Record<string, DocSection[]>>({});
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
 
+  const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+
   // KB анализ — стейты
   const [kb, setKb] = useState<KBAnalyzeResponse | null>(null);
   const [kbLoading, setKbLoading] = useState(false);
@@ -162,6 +168,24 @@ export default function DocgenPage() {
       }
     };
     loadPresets();
+  }, []);
+
+  useEffect(() => {
+    const loadSessions = async () => {
+      setSessionsLoading(true);
+      setSessionsError(null);
+      try {
+        const items = await fetchChatSessions();
+        setSessions(items);
+      } catch (err) {
+        console.error("Failed to load sessions", err);
+        setSessionsError("Не удалось загрузить историю веток");
+      } finally {
+        setSessionsLoading(false);
+      }
+    };
+
+    loadSessions();
   }, []);
 
   // Загружаем секции после генерации
@@ -665,6 +689,42 @@ export default function DocgenPage() {
           </div>
         </Card>
       ) : null}
+
+      <Card className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">История веток</h2>
+          <Button
+            onClick={() => window.location.reload()}
+            className="bg-slate-900 text-white hover:bg-slate-800"
+          >
+            Обновить
+          </Button>
+        </div>
+        {sessionsLoading ? (
+          <p className="text-sm text-slate-500">Загружаем сессии…</p>
+        ) : sessionsError ? (
+          <p className="text-sm text-red-500">{sessionsError}</p>
+        ) : sessions.length === 0 ? (
+          <p className="text-sm text-slate-500">Пока нет сохранённых веток.</p>
+        ) : (
+          <ul className="divide-y divide-slate-200 text-sm">
+            {sessions.map((session) => (
+              <li key={session.id} className="flex items-center justify-between gap-3 py-2">
+                <div>
+                  <div className="font-medium text-slate-700">{session.title || "Без названия"}</div>
+                  <div className="text-xs text-slate-500">Обновлено: {new Date(session.updatedAt).toLocaleString()}</div>
+                </div>
+                <Link
+                  href={`/docgen/chat/${session.id}`}
+                  className="rounded bg-slate-900 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-800"
+                >
+                  Открыть ветки
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
     </div>
   );
 }

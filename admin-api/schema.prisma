@@ -102,22 +102,57 @@ model Template {
 
   @@map("templates")
 }
+
 model ChatSession {
-  id        Int           @id @default(autoincrement())
-  title     String        @default("New chat")
-  messages  ChatMessage[]
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id            String    @id @default(cuid())
+  title         String
+  rootNodeId    String?
+  currentNodeId String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  nodes         ChatNode[]
+
+  @@index([createdAt])
 }
 
-model ChatMessage {
-  id        Int        @id @default(autoincrement())
-  session   ChatSession @relation(fields: [sessionId], references: [id])
-  sessionId Int
-  role      String      // "user" | "assistant" | "system"
-  content   String
-  createdAt DateTime    @default(now())
+model ChatNode {
+  id            String     @id @default(cuid())
+  sessionId     String
+  session       ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  parentId      String?
+  parent        ChatNode?   @relation("ParentChild", fields: [parentId], references: [id])
+  children      ChatNode[]  @relation("ParentChild")
+
+  path          String
+  depth         Int
+  siblingIndex  Int
+  label         String?
+  promptText    String
+  model         String?
+  preset        String?
+  responseJson  Json?
+  responseMd    String?
+  meta          Json?
+  createdAt     DateTime    @default(now())
+
+  @@index([sessionId, path])
 }
+
+model MergeOperation {
+  id           String    @id @default(cuid())
+  sessionId    String
+  targetNodeId String
+  baseNodeId   String
+  leftNodeId   String
+  rightNodeId  String
+  strategy     String
+  sectionsMap  Json
+  conflicts    Json?
+  createdAt    DateTime   @default(now())
+
+  @@index([sessionId, createdAt])
+}
+
 enum DetailLevel {
   BRIEF
   STANDARD
@@ -153,7 +188,7 @@ model GeneratedDocPackage {
   detailLevel   DetailLevel @default(STANDARD)
   promptPresetId Int?
   promptPreset  PromptPreset? @relation(fields: [promptPresetId], references: [id])
-  docs          Json     // тут будет весь объект result.docs
+  docs          Json
   analyses      AnalysisSnapshot[] @relation("PackageAnalyses")
   sections      GeneratedDocSection[]
   createdAt     DateTime @default(now())
@@ -167,10 +202,10 @@ model GeneratedDocSection {
   packageId     Int
   package       GeneratedDocPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
   documentType  DocumentType
-  sectionId     String   // id секции из schemaJson (например, "intro", "scope")
+  sectionId     String
   sectionTitle  String
-  content       Json     // содержимое секции
-  markdown      String?  // markdown версия контента
+  content       Json
+  markdown      String?
   promptPresetId Int?
   promptPreset  PromptPreset? @relation(fields: [promptPresetId], references: [id])
   regeneratedAt DateTime @default(now())
@@ -182,15 +217,16 @@ model GeneratedDocSection {
   @@index([sectionId])
   @@map("generated_doc_sections")
 }
+
 model KBItem {
   id           Int              @id @default(autoincrement())
   title        String
   slug         String           @unique
   summary      String           @default("")
-  content      String           @default("") // markdown/описание
+  content      String           @default("")
   domain       String?
-  solutionType String?          // например: "auth", "payments", "realtime", "ml", ...
-  techStack    Json?            // { backend, frontend, db, services: [...] }
+  solutionType String?
+  techStack    Json?
   createdById  Int?
   createdBy    User?            @relation("KBItemCreatedBy", fields: [createdById], references: [id])
 
@@ -245,7 +281,7 @@ model AnalysisSnapshot {
   domain    String?
   packageId Int?
   package   GeneratedDocPackage? @relation("PackageAnalyses", fields: [packageId], references: [id])
-  result    Json       // полный JSON ответа анализа (см. ниже формат)
+  result    Json
   createdAt DateTime   @default(now())
 
   @@map("analysis_snapshots")

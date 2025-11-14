@@ -2,7 +2,8 @@
 import axios, { AxiosError } from "axios";
 
 // 👇 ЖЁСТКО говорим: ходи в Nest на 3000
-const API_BASE = "http://localhost:3000/api/admin";
+// Можно переопределить через переменную окружения NEXT_PUBLIC_API_URL
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/admin";
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -34,6 +35,18 @@ api.interceptors.response.use(
   },
   (error: AxiosError | any) => {
     console.error("API ERROR RAW:", error);
+    
+    // Более информативная обработка Network Error
+    if (error?.message === "Network Error" || error?.code === "ERR_NETWORK") {
+      console.error(
+        `⚠️ Network Error: Cannot connect to backend at ${API_BASE}\n` +
+        `Please ensure:\n` +
+        `1. Backend server is running on port 3000\n` +
+        `2. CORS is properly configured\n` +
+        `3. No firewall is blocking the connection`
+      );
+    }
+    
     console.error(
       "API ERROR SERIALIZED:",
       JSON.stringify(
@@ -43,6 +56,7 @@ api.interceptors.response.use(
           data: error?.response?.data,
           url: error?.config?.url,
           method: error?.config?.method,
+          baseURL: error?.config?.baseURL,
         },
         null,
         2

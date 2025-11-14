@@ -19,7 +19,7 @@ export class ChatController {
 
   @Get('sessions/:id')
   getSession(@Param('id') id: string) {
-    return this.chat.getMessages(Number(id));
+    return this.chat.getMessages(id);
   }
 
   @Post('sessions/:id/messages')
@@ -27,6 +27,6 @@ export class ChatController {
     @Param('id') id: string,
     @Body('content') content: string,
   ) {
-    return this.chat.sendMessage(Number(id), content);
+    return this.chat.sendMessage(id, content);
   }
 }

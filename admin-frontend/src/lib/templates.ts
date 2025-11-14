@@ -1,17 +1,5 @@
 import api from "./api";
-
-export type Template = {
-  id: number;
-  title: string;
-  slug: string;
-  description: string;
-  html: string;
-  isPublished: boolean;
-  schemaJson?: any;
-  createdAt: string;
-  updatedAt: string;
-  createdById?: number | null;
-};
+import type { Template, TemplateSchemaJson } from "@/types/template";
 
 export async function listTemplates(): Promise<Template[]> {
   const res = await api.get("/templates");
@@ -32,19 +20,27 @@ export async function createTemplate(payload: {
   description?: string;
   html: string;
   isPublished?: boolean;
-  schemaJson?: any;
+  schemaJson?: TemplateSchemaJson;
 }): Promise<Template> {
   return api.post("/templates", payload);
 }
-
 
 export async function updateTemplate(
   id: number,
   payload: Partial<Pick<Template, "title" | "slug" | "description" | "html" | "isPublished" | "schemaJson">>
 ): Promise<Template> {
-  return api.put(`/templates/${id}`, payload);
+  return api.patch(`/templates/${id}`, payload);
 }
 
 export async function deleteTemplate(id: number): Promise<void> {
   await api.delete(`/templates/${id}`);
+}
+
+export async function testTemplateWithAI(params: {
+  templateId: number;
+  topic: string;
+  locale?: string;
+}): Promise<{ data: any; metadata: any; templateId: number; topic: string }> {
+  const { templateId, ...body } = params;
+  return api.post(`/templates/${templateId}/test-ai`, body);
 }

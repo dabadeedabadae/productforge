@@ -23,20 +23,34 @@ export default function EditTemplatePage() {
   const handleSubmit = async (values: TemplateForm) => {
     setSaving(true);
     try {
-      const html =
-        (values as any).html ??
-        (values as any).contentHtml ??
-        (values as any).content ??
-        "";
+      const html = values.html ?? "";
+
+      let schemaJson: any = null;
+      if (values.schemaJson && values.schemaJson.trim().length > 0) {
+        try {
+          schemaJson = JSON.parse(values.schemaJson);
+        } catch (e) {
+          alert("JSON в поле Schema JSON некорректный. Исправь и сохрани ещё раз.");
+          return;
+        }
+      }
 
       await updateTemplate(id, {
         title: values.title?.trim() ?? "",
         slug: values.slug?.trim() ?? "",
         description: values.description?.trim() ?? "",
         html,
+        schemaJson,
       });
 
       router.push("/admin/templates");
+    } catch (err: any) {
+      console.error("Update template failed:", err?.response?.data ?? err);
+      alert(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Не удалось обновить шаблон (смотри консоль)"
+      );
     } finally {
       setSaving(false);
     }
@@ -52,8 +66,8 @@ export default function EditTemplatePage() {
       <TemplateEditor
         submitting={saving}
         onSubmit={handleSubmit}
-        // 👇 вот тут главное — отдать редактору правильное поле
-        initialValues={{
+        templateId={id}
+        initial={{
           title: tpl.title ?? "",
           slug: tpl.slug ?? "",
           description: tpl.description ?? "",
@@ -62,6 +76,9 @@ export default function EditTemplatePage() {
             (tpl as any).contentHtml ??
             (tpl as any).content ??
             "",
+          schemaJson: tpl.schemaJson
+            ? JSON.stringify(tpl.schemaJson, null, 2)
+            : undefined,
         }}
       />
     </div>
